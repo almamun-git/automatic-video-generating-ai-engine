@@ -16,10 +16,14 @@ token.pickle
 # Ignore Python's compiled bytecode and cache folders.
 __pycache__/
 *.pyc
+backend/__pycache__/
+frontend/node_modules/
+frontend/dist/
 
 # --- Temporary Files ---
 # Ignore temporary files generated during the pipeline
 temp/
+*.log
 
 # --- IDE / OS Specific ---
 .DS_Store

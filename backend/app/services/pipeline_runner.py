@@ -3,11 +3,11 @@ import logging
 from dotenv import load_dotenv
 
 # Reuse existing stage modules from the root project
-from stages.stage_1_idea_engine import generate_video_idea
-from stages.stage_2_scriptwriter import generate_video_script
-from stages.stage_3_media_engine import generate_media_assets
-from stages.stage_4_renderer import render_video
-from stages.stage_5_distributor import upload_video_to_youtube
+from app.stages.stage_1_idea_engine import generate_video_idea
+from app.stages.stage_2_scriptwriter import generate_video_script
+from app.stages.stage_3_media_engine import generate_media_assets
+from app.stages.stage_4_renderer import render_video
+from app.stages.stage_5_distributor import upload_video_to_youtube
 
 
 def run_pipeline(niche: str, upload: bool = False) -> dict:

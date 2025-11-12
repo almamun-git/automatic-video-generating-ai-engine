@@ -1,19 +1,14 @@
 import json
 import requests
 import re
-from config import GEMINI_API_KEY # Import the key from our config file
+from app.config import GEMINI_API_KEY
 
-# Define the API URL using the imported key
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
 
 def generate_video_idea(niche: str) -> dict:
-    """
-    Generates a viral video idea for a specific niche using the Gemini AI.
-    """
     print("--- Stage 1: Idea Engine ---")
     print(f"Received niche: {niche}")
 
-    # This "master prompt" tells the AI its role and the exact JSON format to return.
     master_prompt = f"""
     You're a social media expert who knows how to make short-form videos go viral.
     Your job is to come up with a complete video idea for the niche: {niche}.Keep the tone natural, engaging, and attention-grabbing — something that feels exciting and made for social media.
@@ -36,22 +31,15 @@ def generate_video_idea(niche: str) -> dict:
     try:
         response = requests.post(GEMINI_API_URL, headers=headers, data=json.dumps(payload), timeout=60)
         response.raise_for_status()
-        
         response_data = response.json()
-        # Use a more robust way to find and extract the JSON from the AI's response
         text_content = response_data['candidates'][0]['content']['parts'][0]['text']
-        
-        # Find the JSON part of the string, even if it has markdown backticks
         json_match = re.search(r'\{.*\}', text_content, re.DOTALL)
         if not json_match:
             raise json.JSONDecodeError("No JSON object found in response", text_content, 0)
-            
         json_text = json_match.group(0)
-        
         video_idea = json.loads(json_text)
         print("✅ Idea generated successfully.")
         return video_idea
-
     except requests.exceptions.RequestException as e:
         print(f"❌ Error calling Gemini API: {e}")
         return {"error": "API request failed", "details": str(e)}
@@ -59,4 +47,3 @@ def generate_video_idea(niche: str) -> dict:
         print(f"❌ Error parsing Gemini response: {e}")
         print(f"Raw Response Text: {locals().get('text_content', 'Not available')}")
         return {"error": "Could not parse API response", "details": str(e)}
-
