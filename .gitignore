@@ -10,12 +10,18 @@ env/
 .env
 client_secret.json
 token.json
+token.pickle
 
 # --- Python ---
 # Ignore Python's compiled bytecode and cache folders.
 __pycache__/
 *.pyc
 
+# --- Temporary Files ---
+# Ignore temporary files generated during the pipeline
+temp/
+
 # --- IDE / OS Specific ---
- .DS_Store
+.DS_Store
+
 
