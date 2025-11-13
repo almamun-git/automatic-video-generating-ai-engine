@@ -3,7 +3,8 @@ import { Input, Label, Select, Range } from '../components/ui/Form'
 import ProgressBar from '../components/ui/ProgressBar'
 
 export default function Start() {
-  const [niche, setNiche] = useState('Stoicism')
+  // Do not hardcode a default niche — start empty so user can provide their own topic
+  const [niche, setNiche] = useState('')
   const [style, setStyle] = useState('motivational')
   const [length, setLength] = useState(60)
   const [pacing, setPacing] = useState(50)
