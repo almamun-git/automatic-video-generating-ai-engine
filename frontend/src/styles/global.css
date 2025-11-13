@@ -1,5 +1,68 @@
-body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen; margin:0; }
-input { display:block; padding:6px 8px; margin:4px 0 8px; width:100%; }
-button { padding:8px 14px; cursor:pointer; }
-nav a.active { font-weight:600; }
-pre { font-size:12px; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	/* HSL tokens for easy theming */
+	--bg: 222 47% 4%;
+	--fg: 210 40% 96%;
+	--muted: 215 16% 47%;
+	--card: 220 40% 6%;
+	--border: 215 20% 18%;
+	--primary: 198 90% 50%; /* cyan-neon */
+	--primary-foreground: 210 40% 96%;
+	--accent: 262 83% 58%; /* violet */
+	--accent-foreground: 210 40% 96%;
+}
+
+/* Light mode (optional) */
+@media (prefers-color-scheme: light) {
+	:root {
+		--bg: 0 0% 100%;
+		--fg: 222 47% 11%;
+		--muted: 215 16% 47%;
+		--card: 210 40% 98%;
+		--border: 214 32% 91%;
+		--primary: 198 90% 45%;
+		--primary-foreground: 0 0% 100%;
+		--accent: 262 83% 54%;
+		--accent-foreground: 0 0% 100%;
+	}
+}
+
+@layer base {
+	html { @apply antialiased; }
+	body {
+		/* Fallbacks so the UI isn't invisible if Tailwind utilities fail to load */
+		background-color: hsl(var(--bg));
+		color: hsl(var(--fg));
+		@apply font-sans;
+	}
+}
+
+@layer components {
+	.glass {
+		@apply bg-white/5 dark:bg-white/5 backdrop-blur-xl border border-white/10 shadow-glass rounded-xl;
+	}
+	.card {
+		@apply glass p-5;
+	}
+	.btn {
+		@apply inline-flex items-center gap-2 rounded-lg px-4 py-2 font-medium transition-colors;
+	}
+	.btn-primary {
+		@apply btn bg-primary text-primary-foreground hover:bg-cyan-400;
+	}
+	.btn-secondary {
+		@apply btn bg-white/10 text-foreground hover:bg-white/15;
+	}
+	.badge {
+		@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border border-white/10 bg-white/5;
+	}
+}
+
+@layer utilities {
+	.ai-border {
+		box-shadow: inset 0 0 0 1px hsl(var(--border));
+	}
+}
