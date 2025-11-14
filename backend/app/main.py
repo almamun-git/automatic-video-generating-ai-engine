@@ -359,5 +359,12 @@ def suggest(count: int = Query(5, ge=3, le=8, description="Number of topics to s
     """
     topics = suggest_trending_niches(count)
     if not topics:
-        raise HTTPException(status_code=500, detail="Could not generate suggestions")
+        # Never fail the UX — provide deterministic stub list
+        topics = [
+            "AI productivity hacks",
+            "indoor plants care",
+            "morning routine optimization",
+            "budget meal prep",
+            "coding interview tips",
+        ][:max(3, min(count, 8))]
     return SuggestResponse(niche=topics[0], niches=topics)
