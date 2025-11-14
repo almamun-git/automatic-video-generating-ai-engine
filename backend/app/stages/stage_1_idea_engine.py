@@ -1,13 +1,27 @@
 import json
 import requests
 import re
+import logging
+import os
 from app.config import GEMINI_API_KEY
 
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+# Allow overriding the Gemini model via env; default to a model commonly available per /providers/gemini/models.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+# Build endpoint (v1beta generateContent). "-latest" occasionally returns 404; use explicit model.
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+
+# Detect dev / stub mode (no real key or intentionally using a placeholder) to enable graceful fallbacks.
+DEV_FALLBACK_MODE = (
+    os.getenv("AUTOVIDAI_DEV_MODE", "").lower() in {"1", "true", "yes"}
+    or not GEMINI_API_KEY
+    or (isinstance(GEMINI_API_KEY, str) and GEMINI_API_KEY.startswith("dev_"))
+    or (isinstance(GEMINI_MODEL, str) and GEMINI_MODEL.startswith("stub_"))
+)
 
 def generate_video_idea(niche: str) -> dict:
-    print("--- Stage 1: Idea Engine ---")
-    print(f"Received niche: {niche}")
+    logging.info("--- Stage 1: Idea Engine ---")
+    logging.info("Received niche: %s", niche)
 
     # Validate input — do not proceed with an empty or placeholder niche
     if not niche or not str(niche).strip():
@@ -31,12 +45,17 @@ def generate_video_idea(niche: str) -> dict:
     }}
     Just return the JSON — nothing else.
     """
-    print("Generating idea with Gemini AI...")
+    # If we are in dev fallback mode, skip remote call and return deterministic stub.
+    if DEV_FALLBACK_MODE:
+        logging.warning("Gemini dev fallback mode active — returning stub idea (no external API call).")
+        return _stub_idea(niche_clean)
+
+    logging.info("Calling Gemini model '%s' for idea generation...", GEMINI_MODEL)
     headers = {'Content-Type': 'application/json'}
     payload = {"contents": [{"parts": [{"text": master_prompt}]}]}
 
     try:
-        response = requests.post(GEMINI_API_URL, headers=headers, data=json.dumps(payload), timeout=60)
+        response = requests.post(GEMINI_API_URL, headers=headers, json=payload, timeout=60)
         response.raise_for_status()
         response_data = response.json()
         text_content = response_data['candidates'][0]['content']['parts'][0]['text']
@@ -45,22 +64,27 @@ def generate_video_idea(niche: str) -> dict:
             raise json.JSONDecodeError("No JSON object found in response", text_content, 0)
         json_text = json_match.group(0)
         video_idea = json.loads(json_text)
-        print("✅ Idea generated successfully.")
+        logging.info("✅ Idea generated successfully.")
         return video_idea
     except requests.exceptions.RequestException as e:
-        print(f"❌ Error calling Gemini API: {e}")
-        return {"error": "API request failed", "details": str(e)}
+        logging.error("❌ Error calling Gemini API: %s", e)
+        # Graceful fallback — still produce a usable idea so pipeline can continue.
+        return _stub_idea(niche_clean)
     except (KeyError, IndexError, json.JSONDecodeError) as e:
-        print(f"❌ Error parsing Gemini response: {e}")
-        print(f"Raw Response Text: {locals().get('text_content', 'Not available')}")
-        return {"error": "Could not parse API response", "details": str(e)}
+        logging.error("❌ Error parsing Gemini response: %s", e)
+        logging.debug("Raw Response Text: %s", locals().get('text_content', 'Not available'))
+        return _stub_idea(niche_clean)
 
 
 def suggest_niche_via_model() -> str | None:
     """Ask the model to suggest a single concise, safe niche/topic.
 
-    Returns the suggested niche string or None on failure.
+    Returns the suggested niche string or None on failure. Falls back to a stub niche in dev mode.
     """
+    if DEV_FALLBACK_MODE:
+        logging.warning("Dev fallback active for suggest_niche_via_model — returning stub niche.")
+        return "ai productivity"
+
     prompt = (
         "Suggest one concise, safe niche/topic for a short-form social media video. "
         "Return exactly one short phrase (no punctuation), for example: AI productivity"
@@ -68,17 +92,39 @@ def suggest_niche_via_model() -> str | None:
     headers = {'Content-Type': 'application/json'}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     try:
-        resp = requests.post(GEMINI_API_URL, headers=headers, data=json.dumps(payload), timeout=20)
+        resp = requests.post(GEMINI_API_URL, headers=headers, json=payload, timeout=20)
         resp.raise_for_status()
         resp_data = resp.json()
         text = resp_data['candidates'][0]['content']['parts'][0]['text']
-        # pick first non-empty line and sanitize
         first = next((line.strip() for line in text.splitlines() if line.strip()), None)
         if not first:
             return None
-        # remove punctuation except hyphens and spaces
         safe = re.sub(r"[^\w\s-]", "", first).strip()
         return safe if safe else None
     except Exception as e:
-        print(f"❌ Error suggesting niche via model: {e}")
+        logging.error("❌ Error suggesting niche via model: %s", e)
         return None
+
+
+def _stub_idea(niche: str, error: str | None = None) -> dict:
+    """Return a deterministic stub idea structure so downstream stages can proceed.
+
+    Includes an 'fallback' flag and optionally the original error message for observability.
+    """
+    stub = {
+        "title": f"Quick Tips About {niche.title()}",
+        "hook": f"Stop scrolling – {niche.lower()} hack you need today!",
+        "description": f"A short-form video about {niche}. #AI #Tips #Learning",
+        "points": [
+            f"Intro to {niche} in one sentence",
+            f"Key benefit of {niche}",
+            f"Common mistake people make",
+            f"Pro tip to improve results",
+        ],
+        "cta": "Follow for more quick wins!",
+        "fallback": True,
+    }
+    # Do not include an 'error' field to avoid failing the pipeline; log instead.
+    if error:
+        logging.debug("Stub idea used due to error: %s", error)
+    return stub
