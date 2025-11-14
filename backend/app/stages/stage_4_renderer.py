@@ -49,9 +49,12 @@ def _merge_video_audio(video_path: str, audio_path: str, out_path: str, narratio
         "ffmpeg", "-y",
         "-i", video_path,
         "-i", audio_path,
+        "-r", "30",
+        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
         "-filter:a", "aresample=async=1",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "30",
-        "-c:a", "aac", "-shortest",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
         out_path
     ]
     try:
@@ -67,7 +70,12 @@ def _concat_videos(video_paths: list, out_path: str):
     for p in video_paths:
         list_file.write(f"file '{p}'\n")
     list_file.flush()
-    cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file.name, "-c:v", "libx264", "-c:a", "aac", out_path]
+    cmd = [
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file.name,
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
+        "-c:a", "aac", "-ar", "44100", "-ac", "2",
+        out_path
+    ]
     try:
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
@@ -91,9 +99,12 @@ def _reencode_uniform(video_paths: list, temp_dir: str) -> list:
         out = os.path.join(temp_dir, f"uniform_{i}.mp4")
         cmd = [
             "ffmpeg", "-y", "-i", src,
+            "-r", "30",
+            "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
             "-filter:a", "aresample=async=1",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "30",
-            "-c:a", "aac", "-ar", "44100", "-b:a", "128k",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-ar", "44100", "-ac", "2", "-b:a", "128k",
             out
         ]
         try:
@@ -133,10 +144,13 @@ def _local_render(scenes: list, title: str) -> dict:
                 "ffmpeg", "-y",
                 "-i", video_src,
                 "-i", audio_src,
+                "-r", "30",
+                "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
                 "-filter:a", "aresample=async=1",
                 "-t", f"{duration:.2f}",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "30",
-                "-c:a", "aac",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-ar", "44100", "-ac", "2",
                 segment_path
             ]
         else:
@@ -146,10 +160,13 @@ def _local_render(scenes: list, title: str) -> dict:
                 "-i", video_src,
                 "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
                 "-shortest",
+                "-r", "30",
+                "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
                 "-filter:a", "aresample=async=1",
                 "-t", f"{duration:.2f}",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "30",
-                "-c:a", "aac",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-ar", "44100", "-ac", "2",
                 segment_path
             ]
         try:
@@ -162,7 +179,10 @@ def _local_render(scenes: list, title: str) -> dict:
             cmd2 = [
                 "ffmpeg", "-y", "-i", video_src,
                 "-t", f"{duration:.2f}",
+                "-r", "30",
+                "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "30",
+                "-pix_fmt", "yuv420p",
                 fallback_path
             ]
             try:
@@ -201,19 +221,54 @@ def _local_render(scenes: list, title: str) -> dict:
         uniform_paths = _reencode_uniform(segment_paths, temp_dir)
         ok2 = _concat_videos(uniform_paths, final_out)
         if not ok2:
-            return {"error": "Local concatenation failed after re-encode"}
+            logging.warning("Second concat failed; trying filter_complex concat as final fallback")
+            if _concat_videos_filter(uniform_paths, final_out):
+                logging.info("Filter concat succeeded")
+            else:
+                return {"error": "Local concatenation failed after re-encode & filter concat"}
     logging.info("Local render complete: %s", final_out)
     return {"final_video_url": final_out, "local": True}
 
 def _is_url(path: str) -> bool:
     return isinstance(path, str) and (path.startswith("http://") or path.startswith("https://"))
 
+def _concat_videos_filter(video_paths: list, out_path: str) -> bool:
+    """Concat using filter_complex. Requires all inputs to share codec/size/fps (we enforce by re-encode).
+
+    Builds: ffmpeg -i v0 -i v1 ... -filter_complex "[0:v][0:a][1:v][1:a]...concat=n=N:v=1:a=1[v][a]" -map [v] -map [a] ...
+    """
+    import subprocess
+    if not video_paths:
+        return False
+    cmd = ["ffmpeg", "-y"]
+    for p in video_paths:
+        cmd += ["-i", p]
+    parts = []
+    for i in range(len(video_paths)):
+        parts.append(f"[{i}:v][{i}:a]")
+    filter_str = "".join(parts) + f"concat=n={len(video_paths)}:v=1:a=1[v][a]"
+    cmd += [
+        "-filter_complex", filter_str,
+        "-map", "[v]", "-map", "[a]",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
+        "-c:a", "aac", "-ar", "44100", "-ac", "2",
+        out_path
+    ]
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception as e:
+        logging.warning("filter_complex concat failed: %s", e)
+        return False
+
 def render_video(scenes: list, title: str) -> dict:
     fast_mode = os.getenv("FAST_MODE", "").lower() in {"1", "true", "yes"}
+    if RENDER_BACKEND == "local":
+        print("--- Stage 4: Renderer (Using Local FFmpeg) ---")
+        logging.info("Local renderer selected | fast_mode=%s", fast_mode)
+        return _local_render(scenes, title)
     print("--- Stage 4: Renderer (Using Shotstack) ---")
     logging.info("Shotstack environment: %s | fast_mode=%s", SHOTSTACK_STAGE, fast_mode)
-    if RENDER_BACKEND == "local":
-        return _local_render(scenes, title)
     if DEV_FALLBACK_MODE:
         logging.warning("Dev fallback active for Stage 4 — using local renderer stub.")
         return _local_render(scenes, title)

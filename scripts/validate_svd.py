@@ -4,10 +4,11 @@ sys.path.append('backend')
 os.environ['MEDIA_SOURCE'] = 'svd'
 os.environ['FAST_MODE'] = '1'
 os.environ['RENDER_BACKEND'] = 'local'
+os.environ['TTS_SOURCE'] = 'local'
 os.environ.setdefault('GEMINI_MODEL','gemini-2.5-flash')
 from app.services.pipeline_runner import run_pipeline
 
-print('[validate] Starting pipeline with MEDIA_SOURCE=svd FAST_MODE=1 RENDER_BACKEND=local')
+print('[validate] Starting pipeline with MEDIA_SOURCE=svd FAST_MODE=1 RENDER_BACKEND=local TTS_SOURCE=local')
 result = run_pipeline('indoor plants care', upload=False)
 print('[validate] Pipeline result:')
 print(json.dumps(result, indent=2))
