@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiUrl } from '../lib/api'
 
 type LibraryVideo = {
   filename: string
@@ -17,10 +18,14 @@ export default function VideoLibrary() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/library/videos')
+      const res = await fetch(apiUrl('/api/library/videos'))
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      setVideos(data.videos || [])
+      const list: LibraryVideo[] = (data.videos || []).map((v: LibraryVideo) => ({
+        ...v,
+        url: v.url?.startsWith('http') ? v.url : apiUrl(v.url),
+      }))
+      setVideos(list)
     } catch (e: any) {
       setError(String(e))
     } finally {

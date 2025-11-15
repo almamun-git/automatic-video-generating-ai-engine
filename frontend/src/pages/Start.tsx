@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Input, Label, Select, Range } from '../components/ui/Form'
 import ProgressBar from '../components/ui/ProgressBar'
+import { apiUrl } from '../lib/api'
 
 export default function Start() {
   // Do not hardcode a default niche — start empty so user can provide their own topic
@@ -23,7 +24,7 @@ export default function Start() {
     setResult(null)
     setProgress(5)
     try {
-      const res = await fetch('/api/pipeline', {
+      const res = await fetch(apiUrl('/api/pipeline'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ niche, style, length, pacing, upload, verbose }),
@@ -36,9 +37,9 @@ export default function Start() {
         if (data.final_video_url.startsWith('http')) {
           setVideoUrl(data.final_video_url)
         } else {
-          const parts = data.final_video_url.split('/')
-          const filename = parts[parts.length - 1] || 'final_video.mp4'
-          setVideoUrl(`/files/${filename}`)
+      const parts = data.final_video_url.split('/')
+      const filename = parts[parts.length - 1] || 'final_video.mp4'
+      setVideoUrl(apiUrl(`/files/${filename}`))
         }
       } else {
         setVideoUrl(null)
@@ -68,7 +69,7 @@ export default function Start() {
                   setSuggestions([])
                   setSuggestError(null)
                   try {
-                    const r = await fetch('/api/pipeline/suggest?count=5', { method: 'POST' })
+                    const r = await fetch(apiUrl('/api/pipeline/suggest?count=5'), { method: 'POST' })
                     if (!r.ok) throw new Error('Suggestion failed')
                     const j = await r.json()
                     if (Array.isArray(j.niches)) setSuggestions(j.niches)
