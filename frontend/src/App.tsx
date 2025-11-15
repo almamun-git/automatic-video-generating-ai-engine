@@ -6,7 +6,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder'
 import VideoLibrary from './pages/VideoLibrary'
 import LogsAnalytics from './pages/LogsAnalytics'
 import ErrorBoundary from './components/ui/ErrorBoundary'
-import AppShell from './components/Layout/AppShell'
+import AppShell from './components/layout/AppShell'
 
 export default function App() {
   return (
