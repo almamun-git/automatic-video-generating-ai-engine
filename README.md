@@ -226,6 +226,8 @@ Keep the machine running while jobs are active. If the server goes down mid-gene
 
 Quick cloud deploy (no VM): use the Render blueprint included in this repo. See DEPLOY.md for step‑by‑step instructions to deploy both backend and frontend on Render in minutes. Optional instructions for using Vercel for the frontend are included there as well.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mamun-apu/automatic-video-generating-ai-engine)
+
 This repo includes a Docker-based production setup that serves the frontend as static files via Nginx and proxies API/file requests to the FastAPI backend.
 
 ### Prerequisites
