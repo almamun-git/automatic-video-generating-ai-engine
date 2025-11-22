@@ -32,19 +32,21 @@ def generate_video_idea(niche: str) -> dict:
     # Use the provided niche value (trim whitespace) and ensure prompt spacing is correct.
     niche_clean = str(niche).strip()
     master_prompt = f"""
-    You're a social media expert who knows how to make short-form videos go viral.
-    Your job is to come up with a complete video idea for the niche: {niche_clean}. Keep the tone natural, engaging, and attention-grabbing — something that feels exciting and made for social media.
-    Respond with only one minified JSON object — no line breaks, no markdown, no extra explanation. Make sure your response follows this format exactly:
-    {{
-        "title": "A short, catchy, title-case title for the video.",
-        "hook": "A strong, one-sentence opening line to grab the viewer's attention.",
-        "description": "A brief description for the social media post, including 3-5 relevant hashtags.",
-        "points": [
-            "A list of 3 to 5 key points or facts that will be the main content of the video."
-        ],
-        "cta": "A clear, short call-to-action for the end of the video."
-    }}
-    Just return the JSON — nothing else.
+        You are a social media expert who knows how to make short-form videos go viral.
+        Your task is to develop a complete video concept for the niche: {niche_clean}.
+        Keep the tone informal (TikTok-style), yet natural and engaging. The video idea should feel exciting and attention-grabbing, appealing to anyone on the internet and suitable for all social media platforms.
+        Respond with only a single JSON object, formatted as a one-line minified JSON. The JSON must be valid (parseable by JSON.parse), with no Markdown formatting or additional commentary.
+        Follow this exact JSON structure for your answer:
+        {{
+            "title": "A short, catchy title in Title Case for the video.",
+            "hook": "A strong, one-sentence opening line that immediately grabs the viewer’s attention.",
+            "description": "A brief description of the video idea for the post, including 3-5 relevant hashtags.",
+            "points": [
+                "A list of 3 to 5 key points or facts that form the main content of the video."
+            ],
+            "cta": "A clear, concise call-to-action to end the video."
+        }}
+        Only output the JSON object and nothing else.
     """
     # If we are in dev fallback mode, skip remote call and return deterministic stub.
     if DEV_FALLBACK_MODE:
