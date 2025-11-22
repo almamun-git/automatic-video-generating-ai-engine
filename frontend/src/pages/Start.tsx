@@ -22,12 +22,14 @@ export default function Start() {
   const [script, setScript] = useState<any | null>(null)
   const [stage2Loading, setStage2Loading] = useState(false)
   const [stage2Error, setStage2Error] = useState<string | null>(null)
+  const [assets, setAssets] = useState<any[] | null>(null)
 
   const start = async () => {
     setLoading(true)
     setResult(null)
     setProgress(5)
     setScript(null)
+    setAssets(null)
     try {
       const res = await fetch(apiUrl('/api/pipeline'), {
         method: 'POST',
@@ -42,6 +44,9 @@ export default function Start() {
       }
       if (typeof data.prompt === 'string' && data.prompt.length > 0) {
         setPrompt(data.prompt)
+      }
+      if (Array.isArray(data.assets)) {
+        setAssets(data.assets)
       }
       // Derive playable video URL
       if (data.final_video_url) {
@@ -220,11 +225,78 @@ export default function Start() {
             <p className="text-xs text-muted">No video yet.</p>
           )}
         </div>
-        <div>
+        <div className="text-xs bg-white/5 p-3 rounded-lg border border-white/10 space-y-1">
           {result ? (
-            <pre className="text-xs font-mono bg-white/5 p-3 rounded-lg border border-white/10 max-h-64 overflow-auto">{JSON.stringify(result, null, 2)}</pre>
+            <>
+              <div>
+                <span className="font-semibold">Stage:</span>{' '}
+                <span className="text-muted">{result.stage ?? 'n/a'}</span>
+              </div>
+              <div>
+                <span className="font-semibold">Final URL:</span>{' '}
+                <span className="break-all text-muted">{result.final_video_url || 'n/a (render disabled or not finished)'}</span>
+              </div>
+              <div>
+                <span className="font-semibold">Uploaded:</span>{' '}
+                <span className="text-muted">{String(result.uploaded ?? false)}</span>
+              </div>
+              {result.prompt && (
+                <div>
+                  <span className="font-semibold">Prompt preview:</span>{' '}
+                  <span className="text-muted">
+                    {String(result.prompt).length > 140
+                      ? String(result.prompt).slice(0, 140) + '…'
+                      : String(result.prompt)}
+                  </span>
+                </div>
+              )}
+              {result.error && (
+                <div className="text-rose-300">
+                  <span className="font-semibold">Error:</span>{' '}
+                  <span>{String(result.error)}</span>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm text-muted">Output will appear here after generation starts.</p>
+          )}
+        </div>
+        <div className="pt-3 border-t border-white/10 space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Stage 3 Media (Pexels Clips)
+          </h4>
+          {assets && assets.length > 0 ? (
+            <div className="space-y-2 max-h-56 overflow-auto pr-1">
+              {assets.map((asset: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex gap-3 items-start border border-white/10 rounded-md p-2 bg-black/40"
+                >
+                  {asset.video_url && (
+                    <video
+                      className="w-24 h-16 rounded object-cover bg-black flex-shrink-0"
+                      src={asset.video_url}
+                      muted
+                      loop
+                      playsInline
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-semibold mb-1">
+                      Scene {idx + 1}
+                    </div>
+                    <div className="text-[11px] text-muted mb-1">
+                      {asset.visual}
+                    </div>
+                    <div className="text-[11px]">
+                      <span className="font-semibold">Narration:</span> {asset.narration}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">No media assets yet. Run Start Generation to fetch Pexels clips.</p>
           )}
         </div>
         <div className="pt-3 border-t border-white/10 space-y-2">
