@@ -22,13 +22,11 @@ export default function Start() {
   const [script, setScript] = useState<any | null>(null)
   const [stage2Loading, setStage2Loading] = useState(false)
   const [stage2Error, setStage2Error] = useState<string | null>(null)
-  const [assets, setAssets] = useState<any[] | null>(null)
 
   const start = async () => {
     setLoading(true)
     setResult(null)
     setProgress(5)
-    setAssets(null)
     try {
       const res = await fetch(apiUrl('/api/pipeline'), {
         method: 'POST',
@@ -38,9 +36,6 @@ export default function Start() {
       const data = await res.json()
       setProgress(90)
       setResult(data)
-      if (data.idea) setIdea(data.idea)
-      if (data.script) setScript(data.script)
-      if (Array.isArray(data.assets)) setAssets(data.assets)
       // Derive playable video URL
       if (data.final_video_url) {
         if (data.final_video_url.startsWith('http')) {
@@ -264,48 +259,6 @@ export default function Start() {
             <p className="text-sm text-muted">Output will appear here after generation starts.</p>
           )}
         </div>
-            <div className="pt-3 border-t border-white/10 space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Pipeline Media Assets
-              </h4>
-              {assets && assets.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2 max-h-64 overflow-auto">
-                  {assets.map((asset: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="flex gap-3 items-start border border-white/10 rounded-md p-2 bg-black/40"
-                    >
-                      {asset.preview_url || asset.url ? (
-                        <video
-                          className="w-24 h-16 rounded object-cover bg-black"
-                          src={apiUrl(asset.preview_url || asset.url)}
-                          muted
-                          loop
-                          playsInline
-                        />
-                      ) : null}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-semibold mb-1">
-                          Scene {asset.scene_index != null ? asset.scene_index + 1 : idx + 1}
-                        </div>
-                        {asset.description && (
-                          <div className="text-[11px] text-muted mb-1">
-                            {asset.description}
-                          </div>
-                        )}
-                        {asset.narration && (
-                          <div className="text-[11px]">
-                            <span className="font-semibold">Narration:</span> {asset.narration}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted">No media assets yet. Run the full pipeline to generate them.</p>
-              )}
-            </div>
         <div className="pt-3 border-t border-white/10 space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
             Stage 2 Script
