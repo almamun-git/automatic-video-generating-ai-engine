@@ -166,13 +166,18 @@ export default function Start() {
               <input type="checkbox" className="accent-cyan-400" checked={verbose} onChange={e => setVerbose(e.target.checked)} /> Verbose logs
             </label>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 flex-wrap">
             <button disabled={loading} onClick={start} className="btn-primary">
               {loading ? 'Generating…' : 'Start Generation'}
             </button>
-            <div className="flex-1">
+            <div className="flex-1 min-w-[160px]">
               <ProgressBar value={progress} />
             </div>
+            {result?.stage && (
+              <span className="px-2 py-1 rounded text-[11px] font-medium bg-white/10 border border-white/15">
+                Stage: {result.stage}
+              </span>
+            )}
           </div>
           <div className="mt-6 border-t border-white/10 pt-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -224,6 +229,17 @@ export default function Start() {
           ) : (
             <p className="text-xs text-muted">No video yet.</p>
           )}
+          {videoUrl && (
+            <div className="mt-2">
+              <a
+                href={videoUrl}
+                download
+                className="inline-block text-[11px] px-3 py-1.5 rounded bg-primary/20 hover:bg-primary/30 border border-primary/40"
+              >
+                Download Final Video
+              </a>
+            </div>
+          )}
         </div>
         <div className="text-xs bg-white/5 p-3 rounded-lg border border-white/10 space-y-1">
           {result ? (
@@ -234,8 +250,13 @@ export default function Start() {
               </div>
               <div>
                 <span className="font-semibold">Final URL:</span>{' '}
-                <span className="break-all text-muted">{result.final_video_url || 'n/a (render disabled or not finished)'}</span>
+                <span className="break-all text-muted">{result.final_video_url || 'n/a'}</span>
               </div>
+              {!result.final_video_url && result.stage === 'done' && assets && assets.length > 0 && (
+                <div className="text-amber-300/80">
+                  Render skipped or disabled (no final video). Unset AUTOVIDAI_DISABLE_STAGES_4_AND_5 to enable Stage 4.
+                </div>
+              )}
               <div>
                 <span className="font-semibold">Uploaded:</span>{' '}
                 <span className="text-muted">{String(result.uploaded ?? false)}</span>
