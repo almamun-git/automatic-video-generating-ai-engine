@@ -24,6 +24,7 @@ def run_pipeline(niche: str, upload: bool = False) -> dict:
         "stage": None,
         "idea": None,
         "script": None,
+        "prompt": None,
         "assets": None,
         "render": None,
         "final_video_url": None,
@@ -50,22 +51,25 @@ def run_pipeline(niche: str, upload: bool = False) -> dict:
                 f"Stage 2 failed: {script.get('error') if isinstance(script, dict) else 'invalid script'}"
             )
         result["script"] = script
+        # Propagate the prompt used by Stage 2 if available.
+        if isinstance(script, dict) and script.get("_prompt"):
+            result["prompt"] = script["_prompt"]
         logging.info("Stage 2 complete")
         logging.debug("SCRIPT: %s", json.dumps(script, indent=2))
 
-        # Short-circuit stages 3–5 in test/dev mode to speed up iteration.
-        if os.getenv("AUTOVIDAI_DISABLE_STAGES_3_TO_5", "").lower() in {"1", "true", "yes"}:
-            logging.info("Test mode: skipping stages 3–5 (assets, render, upload)")
-            result["stage"] = "done"
-            return result
-
-        # Stage 3: Assets
+        # Stage 3: Assets (always run so we can test through media generation)
         result["stage"] = "assets"
         assets = generate_media_assets(script)
         if not assets:
             raise RuntimeError("Stage 3 failed: no assets generated")
         result["assets"] = assets
         logging.info("Stage 3 complete")
+
+        # Optional: stop after Stage 3 for faster testing (skip render + upload).
+        if os.getenv("AUTOVIDAI_DISABLE_STAGES_4_AND_5", "").lower() in {"1", "true", "yes"}:
+            logging.info("Test mode: skipping stages 4–5 (render, upload)")
+            result["stage"] = "done"
+            return result
 
         # Stage 4: Render
         result["stage"] = "render"

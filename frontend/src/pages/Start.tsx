@@ -27,6 +27,7 @@ export default function Start() {
     setLoading(true)
     setResult(null)
     setProgress(5)
+    setScript(null)
     try {
       const res = await fetch(apiUrl('/api/pipeline'), {
         method: 'POST',
@@ -36,6 +37,12 @@ export default function Start() {
       const data = await res.json()
       setProgress(90)
       setResult(data)
+      if (data.script && Array.isArray(data.script.scenes)) {
+        setScript(data.script)
+      }
+      if (typeof data.prompt === 'string' && data.prompt.length > 0) {
+        setPrompt(data.prompt)
+      }
       // Derive playable video URL
       if (data.final_video_url) {
         if (data.final_video_url.startsWith('http')) {
@@ -53,32 +60,6 @@ export default function Start() {
     } finally {
       setProgress(100)
       setLoading(false)
-    }
-  }
-
-  const fetchStage2Prompt = async () => {
-    setStage2Loading(true)
-    setStage2Error(null)
-    setIdea(null)
-    setPrompt('')
-    setScript(null)
-    try {
-      const res = await fetch(apiUrl('/api/stage2/prompt'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niche }),
-      })
-      if (!res.ok) {
-        const body = await res.text()
-        throw new Error(body || `Stage2 prompt failed with status ${res.status}`)
-      }
-      const data = await res.json()
-      setIdea(data.idea)
-      setPrompt(data.prompt)
-    } catch (e) {
-      setStage2Error(String(e))
-    } finally {
-      setStage2Loading(false)
     }
   }
 
@@ -191,20 +172,7 @@ export default function Start() {
           <div className="mt-6 border-t border-white/10 pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Interactive Scriptwriter (Stage 2)</h3>
-              <button
-                type="button"
-                className="btn-secondary text-xs"
-                disabled={stage2Loading || !niche}
-                onClick={fetchStage2Prompt}
-              >
-                {stage2Loading ? 'Loading…' : 'Generate Prompt'}
-              </button>
             </div>
-            {!niche && (
-              <p className="text-xs text-muted">
-                Enter a niche/topic above, then click “Generate Prompt”.
-              </p>
-            )}
             {stage2Error && (
               <p className="text-xs text-rose-300">{stage2Error}</p>
             )}
@@ -261,7 +229,7 @@ export default function Start() {
         </div>
         <div className="pt-3 border-t border-white/10 space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Stage 2 Script
+            Stage 3 Script
           </h4>
           {script && Array.isArray(script.scenes) && script.scenes.length > 0 ? (
             <div className="space-y-2 max-h-56 overflow-auto pr-1">

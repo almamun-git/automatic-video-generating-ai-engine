@@ -45,6 +45,8 @@ class PipelineResponse(BaseModel):
     job_id: str | None = None  # placeholder for future queue integration
     stage: str | None
     final_video_url: str | None
+    script: Dict | None = None
+    prompt: str | None = None
     uploaded: bool
     error: str | None
 
@@ -315,6 +317,8 @@ def pipeline(req: PipelineRequest):
         job_id=None,
         stage=result.get("stage"),
         final_video_url=result.get("final_video_url"),
+        script=result.get("script"),
+        prompt=result.get("prompt"),
         uploaded=result.get("uploaded", False),
         error=result.get("error"),
     )

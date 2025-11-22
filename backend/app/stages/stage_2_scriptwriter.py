@@ -83,7 +83,11 @@ def run_scriptwriter(
     # Dev fallback: synthesize a deterministic script without external calls.
     if DEV_FALLBACK_MODE:
         logging.warning("Dev fallback active for Stage 2 — returning stub script.")
-        return _stub_script(video_idea)
+        stub = _stub_script(video_idea)
+        # Attach prompt for debugging/observability when using dev fallback.
+        if isinstance(stub, dict):
+            stub.setdefault("_prompt", prompt)
+        return stub
 
     headers = {"Content-Type": "application/json"}
     payload = {
@@ -98,12 +102,18 @@ def run_scriptwriter(
         response.raise_for_status()
         video_script = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         parsed_script = json.loads(video_script)
+        # Attach the prompt we actually sent so the pipeline/frontend can inspect or edit it.
+        if isinstance(parsed_script, dict):
+            parsed_script.setdefault("_prompt", prompt)
         logging.info("✅ Script generated successfully.")
         return parsed_script
     except requests.exceptions.HTTPError as http_err:
         logging.error("❌ HTTP Error in Stage 2: %s", http_err)
         logging.debug("Response body: %s", getattr(response, "text", ""))
-        return _stub_script(video_idea)
+        stub = _stub_script(video_idea)
+        if isinstance(stub, dict):
+            stub.setdefault("_prompt", prompt)
+        return stub
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         logging.error("❌ Error parsing JSON in Stage 2: %s", e)
         if "response" in locals():
@@ -114,7 +124,10 @@ def run_scriptwriter(
                 )
             except Exception:
                 pass
-        return _stub_script(video_idea)
+        stub = _stub_script(video_idea)
+        if isinstance(stub, dict):
+            stub.setdefault("_prompt", prompt)
+        return stub
     except Exception as e:
         logging.error("❌ An unexpected error occurred in Stage 2: %s", e)
         return _stub_script(video_idea)
